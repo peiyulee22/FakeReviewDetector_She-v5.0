@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta charset="utf-8"/>
+<title>Fake Review Detector AI</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13a4ec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101c22",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+<script defer="" src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="flex flex-col min-h-screen">
+<header class="border-b border-gray-200/10 dark:border-gray-700/50">
+<nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<svg class="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM11 16H13V18H11V16ZM12 6C9.79 6 8 7.79 8 10H10C10 8.9 10.9 8 12 8C13.1 8 14 8.9 14 10C14 12 11 11.75 11 15H13C13 12.75 16 12.5 16 10C16 7.79 14.21 6 12 6Z"></path>
+</svg>
+<h1 class="text-xl font-bold text-gray-900 dark:text-white">Review Verifier</h1>
+</div>
+<div class="flex items-center gap-6">
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Home</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">About</a>
+<a class="text-sm font-medium hover:text-primary transition-colors" href="#">Contact</a>
+<button class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-primary/90 transition-colors">
+            Get Started
+          </button>
+</div>
+</nav>
+</header>
+<main class="flex-grow container mx-auto px-6 py-16 flex items-center justify-center">
+<div class="w-full max-w-2xl text-center" x-data="{ inputMethod: 'text' }">
+<h2 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">Uncover the Truth in Reviews</h2>
+<p class="text-lg text-gray-600 dark:text-gray-400 mb-8">
+          Our AI analyzes reviews to detect fakes. Choose your input method below.
+        </p>
+<div class="flex justify-center gap-4 mb-6">
+<button :class="{'bg-primary text-white': inputMethod === 'text', 'bg-white/10 dark:bg-black/20 text-gray-600 dark:text-gray-300 hover:bg-primary/10 dark:hover:bg-primary/20': inputMethod !== 'text'}" @click="inputMethod = 'text'" class="px-6 py-3 rounded-lg text-lg font-bold shadow-md transition-colors">
+            Paste Review Text
+          </button>
+<button :class="{'bg-primary text-white': inputMethod === 'shop', 'bg-white/10 dark:bg-black/20 text-gray-600 dark:text-gray-300 hover:bg-primary/10 dark:hover:bg-primary/20': inputMethod !== 'shop'}" @click="inputMethod = 'shop'" class="px-6 py-3 rounded-lg text-lg font-bold shadow-md transition-colors">
+            Search Shop
+          </button>
+</div>
+<div class="w-full bg-white/5 dark:bg-black/10 p-2 rounded-xl shadow-inner-lg">
+<div class="w-full" x-cloak="" x-show="inputMethod === 'text'">
+<textarea class="w-full h-40 p-4 bg-background-light dark:bg-background-dark rounded-lg resize-none text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Paste a review text..."></textarea>
+</div>
+<div class="w-full" x-cloak="" x-show="inputMethod === 'shop'">
+<input class="w-full p-4 bg-background-light dark:bg-background-dark rounded-lg text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Enter shop name..." type="text"/>
+</div>
+</div>
+<div class="mt-6">
+<button class="bg-primary text-white px-8 py-3 rounded-lg text-lg font-bold shadow-xl hover:bg-primary/90 transition-colors transform hover:scale-105">
+            Analyze
+          </button>
+</div>
+<div class="mt-8 text-sm text-gray-500 dark:text-gray-400 h-6 flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined animate-spin hidden">autorenew</span>
+<p>Awaiting analysis...</p>
+</div>
+</div>
+</main>
+<footer class="border-t border-gray-200/10 dark:border-gray-700/50">
+<div class="container mx-auto px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+        © 2024 Review Verifier. All Rights Reserved.
+      </div>
+</footer>
+</div>
+
+</body></html>
