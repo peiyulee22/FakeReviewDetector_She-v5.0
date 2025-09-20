@@ -1,11 +1,14 @@
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useTheme } from 'next-themes';
+import { Moon, Sun } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 const Layout = ({ children }: LayoutProps) => {
+  const { theme, setTheme } = useTheme();
   return (
     <div className="flex flex-col min-h-screen">
       <header className="border-b border-card-border/20 bg-background-secondary/80 backdrop-blur-sm sticky top-0 z-50">
@@ -40,6 +43,12 @@ const Layout = ({ children }: LayoutProps) => {
             >
               Contact
             </a>
+            <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-full bg-card hover:bg-card-hover transition-colors"
+            aria-label='Toggle Theme'>
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-gray-800" />}
+            </button>
             <button className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-accent-hover transition-all transform hover:scale-105">
               Get Started
             </button>
@@ -53,7 +62,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       <footer className="border-t border-card-border/20 bg-background-secondary">
         <div className="container mx-auto px-6 py-4 text-center text-sm text-foreground-muted">
-          © 2024 Review Verifier. All Rights Reserved.
+          © 2025 Review Verifier. All Rights Reserved.
         </div>
       </footer>
     </div>
