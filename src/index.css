@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Review Verifier Brand Colors */
+    --primary: 199 82% 49%; /* #13a4ec */
+    --primary-glow: 199 82% 65%;
+    --primary-dark: 199 82% 35%;
+    
+    /* Background System */
+    --background: 210 14% 97%; /* #f6f7f8 */
+    --background-secondary: 0 0% 100%;
+    --background-tertiary: 210 17% 94%;
+    
+    --foreground: 215 25% 27%;
+    --foreground-secondary: 215 16% 47%;
+    --foreground-muted: 215 14% 54%;
+
+    /* Card System */
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 27%;
+    --card-border: 210 17% 91%;
+
+    /* Interactive Elements */
+    --accent: 199 82% 49%;
+    --accent-foreground: 0 0% 100%;
+    --accent-hover: 199 82% 45%;
+
+    /* Status Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Form Elements */
+    --input: 210 17% 91%;
+    --input-hover: 210 17% 87%;
+    --border: 210 17% 91%;
+    --ring: 199 82% 49%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background-tertiary)) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(var(--primary) / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(var(--primary) / 0.1), 0 2px 4px -1px hsl(var(--primary) / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(var(--primary) / 0.1), 0 4px 6px -2px hsl(var(--primary) / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(var(--primary) / 0.1), 0 10px 10px -5px hsl(var(--primary) / 0.04);
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark Mode Colors */
+    --background: 210 42% 11%; /* #101c22 */
+    --background-secondary: 210 42% 9%;
+    --background-tertiary: 210 42% 13%;
+    
+    --foreground: 210 20% 98%;
+    --foreground-secondary: 215 15% 75%;
+    --foreground-muted: 215 15% 65%;
+
+    --card: 210 42% 9%;
+    --card-foreground: 210 20% 98%;
+    --card-border: 210 42% 17%;
+
+    --input: 210 42% 17%;
+    --input-hover: 210 42% 20%;
+    --border: 210 42% 17%;
+
+    --gradient-background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background-secondary)) 100%);
+    
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.2), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -2px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 10px 10px -5px hsl(0 0% 0% / 0.1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-['Space_Grotesk',sans-serif] antialiased;
+    background: var(--gradient-background);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .hero-gradient-bg {
+    background: var(--gradient-background);
+  }
+  
+  .card-shadow {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .input-glow {
+    box-shadow: 0 0 0 1px hsl(var(--ring) / 0.2), var(--shadow-sm);
+  }
+  
+  .input-glow:focus {
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4), var(--shadow-md);
+  }
+}
