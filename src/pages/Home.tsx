@@ -270,6 +270,34 @@ const Home = () => {
                   aria-label="Shop name"
                 />
 
+                {/* Suggestions dropdown */}
+                {shopName && (
+                  <ul className="absolute z-10 w-full bg-card border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    {index
+                      .filter((p) =>
+                        p.name.toLowerCase().includes(shopName.toLowerCase())
+                      )
+                      .slice(0, 5)
+                      .map((p, i) => (
+                        <li
+                          key={i}
+                          className="px-4 py-2 cursor-pointer hover:bg-accent"
+                          onClick={() => {
+                            setShopName(p.name);
+                            setResolvedDisplay(`Selected “${p.name}”`);
+                          }}
+                        >
+                          {p.name}{" "}
+                          {p.area && (
+                            <span className="text-xs text-foreground-muted">
+                              – {p.area}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                  </ul>
+                )}
+
                 {resolvedDisplay && (
                   <div className="mt-2 text-xs text-foreground-muted">
                     {resolvedDisplay}
