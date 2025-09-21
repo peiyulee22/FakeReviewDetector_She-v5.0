@@ -213,82 +213,110 @@ const Home = () => {
   //   }
   // };
 
-      const handleAnalyze = async (
-      override?: { shopName?: string; reviewText?: string; place_id?: string }
-    ) => {
-      const review = (override?.reviewText ?? reviewText).trim();
-      let shop = (override?.shopName ?? shopName).trim();
-      let place_id = override?.place_id;
+  type Risk = "low" | "medium" | "high";
 
-      if (
-        (inputMethod === "text" && !override?.reviewText && !review) ||
-        (inputMethod === "shop" && !override?.shopName && !shop)
-      ) {
-        return;
+function mapApiToAnalysisData(resp: any) {
+  // resp from Lambda (single review) looks like:
+  // { reviewText, language, translatedForBedrock?, sentiment, sentimentScores, keyPhrases, fakePercentage, verdict, signals }
+  const fakePct = Number(resp.fakePercentage ?? 0);
+  const risk: Risk = fakePct >= 60 ? "high" : fakePct >= 30 ? "medium" : "low";
+
+  // Convert Comprehend scores to 0..10 for your UI card (optional)
+  let s10 = 5.0;
+  const sc = resp?.sentimentScores;
+  if (sc && typeof sc.Positive === "number" && typeof sc.Negative === "number") {
+    s10 = Number((((sc.Positive || 0) - (sc.Negative || 0)) * 10 + 5).toFixed(1));
+    if (Number.isNaN(s10)) s10 = 5.0;
+  }
+
+  return {
+    reviewText: resp.reviewText || "",
+    isFake: fakePct >= 60,
+    confidence: Math.round(fakePct),          // 0..100
+    sentimentScore: s10,                      // 0..10
+    keyIndicators: [
+      ...(resp.keyPhrases ?? []),
+      ...(resp.signals ?? []),
+    ].slice(0, 6),
+    aiAnalysis: resp.verdict ? `Verdict: ${resp.verdict}.` : "—",
+    riskLevel: risk,
+  } as const;
+}
+
+      const handleAnalyze = async (override?: { shopName?: string; reviewText?: string; place_id?: string }) => {
+  const review = (override?.reviewText ?? reviewText).trim();
+  let shop = (override?.shopName ?? shopName).trim();
+  let place_id = override?.place_id;
+
+  if ((inputMethod === "text" && !override?.reviewText && !review) ||
+      (inputMethod === "shop" && !override?.shopName && !shop)) {
+    return;
+  }
+
+  setIsLoading(true);
+  setResolvedDisplay(null);
+
+  try {
+    // Canonicalize shop names if needed
+    if (inputMethod === "shop") {
+      const canonical = resolveCanonical(shop);
+      if (canonical) {
+        if (normalize(canonical.name) !== normalize(shop)) {
+          setResolvedDisplay(`Interpreting as “${canonical.name}”`);
+        }
+        shop = canonical.name;
+        place_id = place_id ?? canonical.place_id;
       }
+    }
 
-      setIsLoading(true);
-      setResolvedDisplay(null);
+    const payload = inputMethod === "text" ? { reviewText: review } : { shopName: shop, place_id };
 
-      try {
-        // If shop input, resolve canonical
-        if (inputMethod === "shop") {
-          const canonical = resolveCanonical(shop);
-          if (canonical) {
-            if (normalize(canonical.name) !== normalize(shop)) {
-              setResolvedDisplay(`Interpreting as “${canonical.name}”`);
-            }
-            shop = canonical.name;
-            place_id = place_id ?? canonical.place_id;
-          }
-        }
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-        const payload =
-          inputMethod === "text"
-            ? { reviewText: review }
-            : { shopName: shop, place_id };
+    let raw = "";
+    let api = null as any;
+    try {
+      raw = await res.text();
+      api = JSON.parse(raw);
+    } catch {
+      try { api = JSON.parse(JSON.parse(raw)); } catch { api = null; }
+    }
+    if (!api) api = { error: "Invalid response from server" };
 
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        let raw = "";
-        let data: any = null;
-        try {
-          raw = await res.text();
-          data = JSON.parse(raw);
-        } catch {
-          try {
-            data = JSON.parse(JSON.parse(raw));
-          } catch {
-            data = null;
-          }
-        }
-
-        if (!data) data = { error: "Invalid response from server" };
-
-        // Decide route based on inputMethod
-        if (inputMethod === "shop") {
-          // Store for refresh
-          try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
-          navigate("/analyze", { state: { data } });
-        } else {
-          // Paste review → navigate to PageReviewAnalysis
-          try { sessionStorage.setItem("pageAnalysis", JSON.stringify(data)); } catch {}
-          navigate("/page-review-analyze", { state: { data } });
-        }
-
-      } catch (e: any) {
-        const errMsg = String(e?.message || e);
-        navigate(inputMethod === "shop" ? "/analyze" : "/page-review-analyze", {
-          state: { error: true, message: errMsg },
-        });
-      } finally {
-        setIsLoading(false);
+    if (!res.ok) {
+      // Send error to the right page
+      const errState = { error: true, message: api?.error || `Request failed (${res.status})`, data: api };
+      if (inputMethod === "shop") {
+        navigate("/analyze", { state: errState });
+      } else {
+        navigate("/review-analyze", { state: errState });
       }
-    };
+      return;
+    }
+
+    if (inputMethod === "shop") {
+      // Aggregate page uses raw aggregate shape
+      try { sessionStorage.setItem("analysis", JSON.stringify(api)); } catch {}
+      navigate("/analyze", { state: { data: api } });
+    } else {
+      // SINGLE REVIEW: transform to UI shape and use consistent key + route
+      const analysisData = mapApiToAnalysisData(api);
+      try { sessionStorage.setItem("analysisData", JSON.stringify(analysisData)); } catch {}
+      navigate("/review-analyze", { state: { analysisData } });
+    }
+
+  } catch (e: any) {
+    const msg = String(e?.message || e);
+    const errState = { error: true, message: msg };
+    navigate(inputMethod === "shop" ? "/analyze" : "/review-analyze", { state: errState });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 
   const analyzeDisabled =
