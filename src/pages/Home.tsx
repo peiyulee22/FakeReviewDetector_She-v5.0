@@ -137,81 +137,159 @@ const Home = () => {
     return findNearExact(q);
   };
 
-  const handleAnalyze = async (override?: { shopName?: string; reviewText?: string; place_id?: string }) => {
-    const review = (override?.reviewText ?? reviewText).trim();
-    let shop = (override?.shopName ?? shopName).trim();
-    let place_id = override?.place_id;
+  // const handleAnalyze = async (override?: { shopName?: string; reviewText?: string; place_id?: string }) => {
+  //   const review = (override?.reviewText ?? reviewText).trim();
+  //   let shop = (override?.shopName ?? shopName).trim();
+  //   let place_id = override?.place_id;
 
-    if (
-      (inputMethod === "text" && !override?.reviewText && !review) ||
-      (inputMethod === "shop" && !override?.shopName && !shop)
-    ) {
-      return;
-    }
+  //   if (
+  //     (inputMethod === "text" && !override?.reviewText && !review) ||
+  //     (inputMethod === "shop" && !override?.shopName && !shop)
+  //   ) {
+  //     return;
+  //   }
 
-    setIsLoading(true);
-    setResolvedDisplay(null);
+  //   setIsLoading(true);
+  //   setResolvedDisplay(null);
 
-    try {
-      if (inputMethod === "shop") {
-        const canonical = resolveCanonical(shop);
-        if (canonical) {
-          if (normalize(canonical.name) !== normalize(shop)) {
-            setResolvedDisplay(`Interpreting as “${canonical.name}”`);
-          }
-          shop = canonical.name;
-          place_id = place_id ?? canonical.place_id;
-        }
-      }
+  //   try {
+  //     if (inputMethod === "shop") {
+  //       const canonical = resolveCanonical(shop);
+  //       if (canonical) {
+  //         if (normalize(canonical.name) !== normalize(shop)) {
+  //           setResolvedDisplay(`Interpreting as “${canonical.name}”`);
+  //         }
+  //         shop = canonical.name;
+  //         place_id = place_id ?? canonical.place_id;
+  //       }
+  //     }
 
-      const payload =
-        inputMethod === "text"
-          ? { reviewText: review }
-          : { shopName: shop, place_id };
+  //     const payload =
+  //       inputMethod === "text"
+  //         ? { reviewText: review }
+  //         : { shopName: shop, place_id };
 
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  //     const res = await fetch(API_URL, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(payload),
+  //     });
 
-      // Robust parsing (JSON or double-encoded)
-      let raw = "";
-      let data: any = null;
-      try {
-        raw = await res.text();
-        data = JSON.parse(raw);
-      } catch {
-        try {
-          data = JSON.parse(JSON.parse(raw));
-        } catch {
-          data = null;
-        }
-      }
-      if (!data) data = { error: "Invalid response from server" };
+  //     // Robust parsing (JSON or double-encoded)
+  //     let raw = "";
+  //     let data: any = null;
+  //     try {
+  //       raw = await res.text();
+  //       data = JSON.parse(raw);
+  //     } catch {
+  //       try {
+  //         data = JSON.parse(JSON.parse(raw));
+  //       } catch {
+  //         data = null;
+  //       }
+  //     }
+  //     if (!data) data = { error: "Invalid response from server" };
 
-      if (!res.ok) {
-        try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
-        navigate("/analyze", {
-          state: {
-            error: true,
-            message: data?.error || `Request failed (${res.status})`,
-            data,
-          },
-        });
+  //     if (!res.ok) {
+  //       try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
+  //       navigate("/analyze", {
+  //         state: {
+  //           error: true,
+  //           message: data?.error || `Request failed (${res.status})`,
+  //           data,
+  //         },
+  //       });
+  //       return;
+  //     }
+
+  //     try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
+  //     navigate("/analyze", { state: { data } });
+  //   } catch (e: any) {
+  //     navigate("/analyze", {
+  //       state: { error: true, message: String(e?.message || e) },
+  //     });
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+      const handleAnalyze = async (
+      override?: { shopName?: string; reviewText?: string; place_id?: string }
+    ) => {
+      const review = (override?.reviewText ?? reviewText).trim();
+      let shop = (override?.shopName ?? shopName).trim();
+      let place_id = override?.place_id;
+
+      if (
+        (inputMethod === "text" && !override?.reviewText && !review) ||
+        (inputMethod === "shop" && !override?.shopName && !shop)
+      ) {
         return;
       }
 
-      try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
-      navigate("/analyze", { state: { data } });
-    } catch (e: any) {
-      navigate("/analyze", {
-        state: { error: true, message: String(e?.message || e) },
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsLoading(true);
+      setResolvedDisplay(null);
+
+      try {
+        // If shop input, resolve canonical
+        if (inputMethod === "shop") {
+          const canonical = resolveCanonical(shop);
+          if (canonical) {
+            if (normalize(canonical.name) !== normalize(shop)) {
+              setResolvedDisplay(`Interpreting as “${canonical.name}”`);
+            }
+            shop = canonical.name;
+            place_id = place_id ?? canonical.place_id;
+          }
+        }
+
+        const payload =
+          inputMethod === "text"
+            ? { reviewText: review }
+            : { shopName: shop, place_id };
+
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        let raw = "";
+        let data: any = null;
+        try {
+          raw = await res.text();
+          data = JSON.parse(raw);
+        } catch {
+          try {
+            data = JSON.parse(JSON.parse(raw));
+          } catch {
+            data = null;
+          }
+        }
+
+        if (!data) data = { error: "Invalid response from server" };
+
+        // Decide route based on inputMethod
+        if (inputMethod === "shop") {
+          // Store for refresh
+          try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
+          navigate("/analyze", { state: { data } });
+        } else {
+          // Paste review → navigate to PageReviewAnalysis
+          try { sessionStorage.setItem("pageAnalysis", JSON.stringify(data)); } catch {}
+          navigate("/page-review-analyze", { state: { data } });
+        }
+
+      } catch (e: any) {
+        const errMsg = String(e?.message || e);
+        navigate(inputMethod === "shop" ? "/analyze" : "/page-review-analyze", {
+          state: { error: true, message: errMsg },
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
 
   const analyzeDisabled =
     isLoading ||
