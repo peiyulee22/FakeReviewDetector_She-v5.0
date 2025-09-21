@@ -2,14 +2,45 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 
-// Use your correct API URL here (with stage if needed)
 const API_URL = "https://rxfogy5lti.execute-api.us-east-1.amazonaws.com/analyze";
 
 type Place = {
-  name: string;       // Canonical name as stored in DB
-  area?: string;      // Optional locality
-  place_id?: string;  // Optional Place ID from DB
+  name: string;
+  area?: string;
+  place_id?: string;
 };
+
+type Risk = "low" | "medium" | "high";
+
+/* ---------------- Map Lambda -> UI format ---------------- */
+function mapApiToAnalysisData(resp: any) {
+  const fakePct = Number(resp.fakePercentage ?? 0);
+  const risk: Risk = fakePct >= 60 ? "high" : fakePct >= 30 ? "medium" : "low";
+
+ const englishFromAnyField =
+    (typeof resp.englishText === "string" && resp.englishText.trim()) ||
+    (typeof resp.englishForBedrock === "string" && resp.englishForBedrock.trim()) ||
+    (typeof resp.translatedForBedrock === "string" && resp.translatedForBedrock.trim()) ||
+    "";
+
+  return {
+    reviewText: resp.reviewText || "",
+    isFake: fakePct >= 60,
+    confidence: Math.round(fakePct),
+    sentimentScore: Number(resp.sentimentScore ?? 5.0),
+    keyIndicators: [...(resp.keyPhrases ?? []), ...(resp.signals ?? [])].slice(0, 6),
+    aiAnalysis: resp.verdict ? `Verdict: ${resp.verdict}.` : "—",
+    riskLevel: risk,
+
+    detectedLanguage: resp.detectedLanguage ?? resp.language,
+    // boolean flag: true if either the backend set a flag OR we found an English string
+    translatedForBedrock: Boolean(resp.translatedForBedrock || englishFromAnyField),
+    // actual English text we will show in UI
+    englishText: englishFromAnyField,
+  } as const;
+}
+
+
 
 const Home = () => {
   const [inputMethod, setInputMethod] = useState<"text" | "shop">("text");
@@ -17,14 +48,8 @@ const Home = () => {
   const [shopName, setShopName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [resolvedDisplay, setResolvedDisplay] = useState<string | null>(null);
-
   const navigate = useNavigate();
 
-  /** ----------------------------------------------------------------
-   * In production, fetch these from your DB (DynamoDB/Places dump).
-   * index        -> list of canonical places
-   * aliasIndex   -> alias/shortcut -> canonical place
-   * ---------------------------------------------------------------- */
   const [index, setIndex] = useState<Place[]>([]);
   const [aliasIndex, setAliasIndex] = useState<Record<string, Place>>({});
 
@@ -40,29 +65,21 @@ const Home = () => {
     ];
     setIndex(canonical);
 
-    // Aliases → canonical (add as many as you want; later load from DB)
-    const aliases: Record<string, Place> = {
-      "mcd":          { name: "McDonald's", area: "KLCC" },
-      "mcdonald":     { name: "McDonald's", area: "KLCC" },
-      "mcdonalds":    { name: "McDonald's", area: "KLCC" },
-      "mcdonald's":   { name: "McDonald's", area: "KLCC" },
-      "cc by mel":   { name: "CC by Mel", area: "Bukit Jalil" },
-      // add more…
-    };
-    setAliasIndex(aliases);
+    setAliasIndex({
+      mcd: { name: "McDonald's", area: "KLCC" },
+      mcdonald: { name: "McDonald's", area: "KLCC" },
+      mcdonalds: { name: "McDonald's", area: "KLCC" },
+      "mcdonald's": { name: "McDonald's", area: "KLCC" },
+    });
   }, []);
 
-  // --- Matching utilities (no dependencies) ---
   const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFKC")
+    s.toLowerCase().normalize("NFKC")
       .replace(/[’`“”]/g, "'")
-      .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
       .replace(/\s+/g, " ")
       .trim();
 
-  // Classic Levenshtein
   const levenshtein = (a: string, b: string): number => {
     const m = a.length, n = b.length;
     if (m === 0) return n;
@@ -82,26 +99,14 @@ const Home = () => {
     return dp[n];
   };
 
-  // Similarity ratio
-  const similarity = (a: string, b: string): number => {
-    if (!a && !b) return 1;
-    const d = levenshtein(a, b);
-    const maxLen = Math.max(a.length, b.length) || 1;
-    return 1 - d / maxLen;
-  };
-
-  /** Fuzzy near-exact from the canonical index */
   const findNearExact = (qRaw: string): Place | null => {
     const q = normalize(qRaw);
     if (!q) return null;
 
-    // Direct normalized equality
     const eq = index.find((p) => normalize(p.name) === q);
     if (eq) return eq;
 
-    const ACCEPT_DISTANCE = 2;
-    const ACCEPT_RATIO = 0.90;
-    const AMBIGUITY_GAP = 0.06;
+    const ACCEPT_DISTANCE = 2, ACCEPT_RATIO = 0.9, AMBIGUITY_GAP = 0.06;
 
     const scored = index.map((p) => {
       const n = normalize(p.name);
@@ -123,197 +128,79 @@ const Home = () => {
     return best.item;
   };
 
-  /** Canonical resolver:
-   * 1) Alias table (exact on normalized string)
-   * 2) Near-exact fuzzy over canonical list
-   */
   const resolveCanonical = (q: string): Place | null => {
     const key = normalize(q);
     if (aliasIndex[key]) return aliasIndex[key];
     return findNearExact(q);
   };
 
-  // const handleAnalyze = async (override?: { shopName?: string; reviewText?: string; place_id?: string }) => {
-  //   const review = (override?.reviewText ?? reviewText).trim();
-  //   let shop = (override?.shopName ?? shopName).trim();
-  //   let place_id = override?.place_id;
+  /* ---------------- Main handler ---------------- */
+  const handleAnalyze = async (
+    override?: { shopName?: string; reviewText?: string; place_id?: string }
+  ) => {
+    const review = (override?.reviewText ?? reviewText).trim();
+    let shop = (override?.shopName ?? shopName).trim();
+    let place_id = override?.place_id;
 
-  //   if (
-  //     (inputMethod === "text" && !override?.reviewText && !review) ||
-  //     (inputMethod === "shop" && !override?.shopName && !shop)
-  //   ) {
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-  //   setResolvedDisplay(null);
-
-  //   try {
-  //     if (inputMethod === "shop") {
-  //       const canonical = resolveCanonical(shop);
-  //       if (canonical) {
-  //         if (normalize(canonical.name) !== normalize(shop)) {
-  //           setResolvedDisplay(`Interpreting as “${canonical.name}”`);
-  //         }
-  //         shop = canonical.name;
-  //         place_id = place_id ?? canonical.place_id;
-  //       }
-  //     }
-
-  //     const payload =
-  //       inputMethod === "text"
-  //         ? { reviewText: review }
-  //         : { shopName: shop, place_id };
-
-  //     const res = await fetch(API_URL, {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify(payload),
-  //     });
-
-  //     // Robust parsing (JSON or double-encoded)
-  //     let raw = "";
-  //     let data: any = null;
-  //     try {
-  //       raw = await res.text();
-  //       data = JSON.parse(raw);
-  //     } catch {
-  //       try {
-  //         data = JSON.parse(JSON.parse(raw));
-  //       } catch {
-  //         data = null;
-  //       }
-  //     }
-  //     if (!data) data = { error: "Invalid response from server" };
-
-  //     if (!res.ok) {
-  //       try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
-  //       navigate("/analyze", {
-  //         state: {
-  //           error: true,
-  //           message: data?.error || `Request failed (${res.status})`,
-  //           data,
-  //         },
-  //       });
-  //       return;
-  //     }
-
-  //     try { sessionStorage.setItem("analysis", JSON.stringify(data)); } catch {}
-  //     navigate("/analyze", { state: { data } });
-  //   } catch (e: any) {
-  //     navigate("/analyze", {
-  //       state: { error: true, message: String(e?.message || e) },
-  //     });
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-  type Risk = "low" | "medium" | "high";
-
-function mapApiToAnalysisData(resp: any) {
-  // resp from Lambda (single review) looks like:
-  // { reviewText, language, translatedForBedrock?, sentiment, sentimentScores, keyPhrases, fakePercentage, verdict, signals }
-  const fakePct = Number(resp.fakePercentage ?? 0);
-  const risk: Risk = fakePct >= 60 ? "high" : fakePct >= 30 ? "medium" : "low";
-
-  // Convert Comprehend scores to 0..10 for your UI card (optional)
-  let s10 = 5.0;
-  const sc = resp?.sentimentScores;
-  if (sc && typeof sc.Positive === "number" && typeof sc.Negative === "number") {
-    s10 = Number((((sc.Positive || 0) - (sc.Negative || 0)) * 10 + 5).toFixed(1));
-    if (Number.isNaN(s10)) s10 = 5.0;
-  }
-
-  return {
-    reviewText: resp.reviewText || "",
-    isFake: fakePct >= 60,
-    confidence: Math.round(fakePct),          // 0..100
-    sentimentScore: s10,                      // 0..10
-    keyIndicators: [
-      ...(resp.keyPhrases ?? []),
-      ...(resp.signals ?? []),
-    ].slice(0, 6),
-    aiAnalysis: resp.verdict ? `Verdict: ${resp.verdict}.` : "—",
-    riskLevel: risk,
-  } as const;
-}
-
-      const handleAnalyze = async (override?: { shopName?: string; reviewText?: string; place_id?: string }) => {
-  const review = (override?.reviewText ?? reviewText).trim();
-  let shop = (override?.shopName ?? shopName).trim();
-  let place_id = override?.place_id;
-
-  if ((inputMethod === "text" && !override?.reviewText && !review) ||
-      (inputMethod === "shop" && !override?.shopName && !shop)) {
-    return;
-  }
-
-  setIsLoading(true);
-  setResolvedDisplay(null);
-
-  try {
-    // Canonicalize shop names if needed
-    if (inputMethod === "shop") {
-      const canonical = resolveCanonical(shop);
-      if (canonical) {
-        if (normalize(canonical.name) !== normalize(shop)) {
-          setResolvedDisplay(`Interpreting as “${canonical.name}”`);
-        }
-        shop = canonical.name;
-        place_id = place_id ?? canonical.place_id;
-      }
-    }
-
-    const payload = inputMethod === "text" ? { reviewText: review } : { shopName: shop, place_id };
-
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    let raw = "";
-    let api = null as any;
-    try {
-      raw = await res.text();
-      api = JSON.parse(raw);
-    } catch {
-      try { api = JSON.parse(JSON.parse(raw)); } catch { api = null; }
-    }
-    if (!api) api = { error: "Invalid response from server" };
-
-    if (!res.ok) {
-      // Send error to the right page
-      const errState = { error: true, message: api?.error || `Request failed (${res.status})`, data: api };
-      if (inputMethod === "shop") {
-        navigate("/analyze", { state: errState });
-      } else {
-        navigate("/review-analyze", { state: errState });
-      }
+    if ((inputMethod === "text" && !override?.reviewText && !review) ||
+        (inputMethod === "shop" && !override?.shopName && !shop)) {
       return;
     }
 
-    if (inputMethod === "shop") {
-      // Aggregate page uses raw aggregate shape
-      try { sessionStorage.setItem("analysis", JSON.stringify(api)); } catch {}
-      navigate("/analyze", { state: { data: api } });
-    } else {
-      // SINGLE REVIEW: transform to UI shape and use consistent key + route
-      const analysisData = mapApiToAnalysisData(api);
-      try { sessionStorage.setItem("analysisData", JSON.stringify(analysisData)); } catch {}
-      navigate("/review-analyze", { state: { analysisData } });
+    setIsLoading(true);
+    setResolvedDisplay(null);
+
+    try {
+      if (inputMethod === "shop") {
+        const canonical = resolveCanonical(shop);
+        if (canonical) {
+          if (normalize(canonical.name) !== normalize(shop)) {
+            setResolvedDisplay(`Interpreting as “${canonical.name}”`);
+          }
+          shop = canonical.name;
+          place_id = place_id ?? canonical.place_id;
+        }
+      }
+
+      const payload = inputMethod === "text" ? { reviewText: review } : { shopName: shop, place_id };
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+
+      let raw = "", api: any = null;
+      try {
+        raw = await res.text();
+        api = JSON.parse(raw);
+      } catch {
+        try { api = JSON.parse(JSON.parse(raw)); } catch { api = null; }
+      }
+      if (!api) api = { error: "Invalid response from server" };
+
+      if (!res.ok) {
+        const errState = { error: true, message: api?.error || `Request failed (${res.status})`, data: api };
+        navigate(inputMethod === "shop" ? "/analyze" : "/review-analyze", { state: errState });
+        return;
+      }
+
+      if (inputMethod === "shop") {
+        try { sessionStorage.setItem("analysis", JSON.stringify(api)); } catch {}
+        navigate("/analyze", { state: { data: api } });
+      } else {
+        const analysisData = mapApiToAnalysisData(api);
+        try { sessionStorage.setItem("analysisData", JSON.stringify(analysisData)); } catch {}
+        navigate("/review-analyze", { state: { analysisData } });
+      }
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      const errState = { error: true, message: msg };
+      navigate(inputMethod === "shop" ? "/analyze" : "/review-analyze", { state: errState });
+    } finally {
+      setIsLoading(false);
     }
-
-  } catch (e: any) {
-    const msg = String(e?.message || e);
-    const errState = { error: true, message: msg };
-    navigate(inputMethod === "shop" ? "/analyze" : "/review-analyze", { state: errState });
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   const analyzeDisabled =
     isLoading ||
