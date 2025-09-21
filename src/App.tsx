@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import ReviewAnalysis from "./pages/ReviewAnalysis";          // shop aggregate
 import PageReviewAnalysis from "./pages/PageReviewAnalysis";  // single review
 import NotFound from "./pages/NotFound";
+import AboutUs from "./pages/aboutus";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/analyze" element={<ReviewAnalysis />} />
             <Route path="/page-review-analyze" element={<PageReviewAnalysis />} />
+            <Route path="/aboutus" element={<AboutUs />} />
             {/* Optional alias: if you ever navigate to /review-analyze */}
             <Route path="/review-analyze" element={<PageReviewAnalysis />} />
             <Route path="*" element={<NotFound />} />

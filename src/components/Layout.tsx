@@ -31,18 +31,12 @@ const Layout = ({ children }: LayoutProps) => {
             >
               Home
             </Link>
-            <a 
-              href="#" 
+            <Link
+              to="/aboutus"
               className="text-sm font-medium text-foreground-secondary hover:text-primary transition-colors"
             >
               About
-            </a>
-            <a 
-              href="#" 
-              className="text-sm font-medium text-foreground-secondary hover:text-primary transition-colors"
-            >
-              Contact
-            </a>
+            </Link>
             <button 
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-full bg-card hover:bg-card-hover transition-colors"
