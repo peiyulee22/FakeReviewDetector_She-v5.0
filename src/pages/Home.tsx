@@ -255,7 +255,7 @@ const Home = () => {
                 aria-label="Review text"
               />
             ) : (
-              <div className="text-left">
+              <div className="relative text-left w-full">
                 <input
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
@@ -272,7 +272,7 @@ const Home = () => {
 
                 {/* Suggestions dropdown */}
                 {shopName && (
-                  <ul className="absolute z-10 w-full bg-card border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  <ul className="absolute left-0 right-0 z-10 bg-card border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {index
                       .filter((p) =>
                         p.name.toLowerCase().includes(shopName.toLowerCase())
