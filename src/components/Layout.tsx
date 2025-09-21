@@ -62,7 +62,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       <footer className="border-t border-card-border/20 bg-background-secondary">
         <div className="container mx-auto px-6 py-4 text-center text-sm text-foreground-muted">
-          © 2025 Review Verifier. All Rights Reserved.
+          © 2025 She+++v5.0. All Rights Reserved.
         </div>
       </footer>
     </div>
