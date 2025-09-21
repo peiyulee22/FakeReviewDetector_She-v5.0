@@ -46,11 +46,7 @@ const Home = () => {
       "mcdonald":     { name: "McDonald's", area: "KLCC" },
       "mcdonalds":    { name: "McDonald's", area: "KLCC" },
       "mcdonald's":   { name: "McDonald's", area: "KLCC" },
-      "burger lab":   { name: "myBurgerLab", area: "Seapark" },
-      "myburgerlab":  { name: "myBurgerLab", area: "Seapark" },
-      "burgerlab":    { name: "BurgerLab", area: "SS15" },
-      "zanmai":       { name: "Sushi Zanmai", area: "Mid Valley" },
-      "italian corner": { name: "The Italian Corner", area: "Bukit Bintang" },
+      "cc by mel":   { name: "CC by Mel", area: "Bukit Jalil" },
       // add more…
     };
     setAliasIndex(aliases);
@@ -382,7 +378,7 @@ function mapApiToAnalysisData(resp: any) {
                     }
                   }}
                   className="w-full p-4 bg-background rounded-lg text-base placeholder:text-foreground-muted focus:outline-none input-glow border-0"
-                  placeholder="Enter shop name... e.g., mcd, myburgerlab, zanmai"
+                  placeholder="Enter shop name... e.g., mcd, cc by mel, vcr"
                   type="text"
                   aria-label="Shop name"
                 />
